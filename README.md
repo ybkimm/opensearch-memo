@@ -38,6 +38,15 @@ Indexは複数のShardを含めていて、データは分散される。
 ただ、複製ではないのでノードが死んだらそのノードに格納されているデータも消えてしまう
 
 
+### Routing
+
+```
+shard_num = hash(_routing) % num_primary_shards
+```
+
+shardの数がshard_numに影響を与えるため、既存のIndexにshardを追加・削除することは不可
+
+
 ## Replication
 
 Shardの複製
@@ -66,12 +75,22 @@ PUT /put_index_name_here/_doc/put_document_id_here
 GET /put_index_name_here/_doc/put_document_id_here
 
 # Update the document
-# Note that the document can not be **updated**, because document is immutable
-# Update API just *replaces* the document.
+# Note that the document can not be **updated**, because document is immutable.
+# Update API does: gets the document, update content, and *replaces* the document.
 POST /put_index_name_here/_update/put_document_id_here
 {
   ...
 }
+
+# Update many documents (with query)
+POST /put_index_name_here/_update_by_query
+{
+  "script": { ... },
+  "query": {
+    "match_all": {}
+  }
+}
+
 
 # Delete the document
 DELETE /put_index_name_here/_update/put_document_id_here
@@ -126,9 +145,37 @@ Indexに該当するDocumentが存在しない場合、新しいDocumentが作�
 `result`は`created`になる
 
 
+## Concurrency control
+
+以下の場合、APP2のUPDATEが反映されない
+
+```
+----|-------------|----------------|---------------
+    | t1          | t2             | t3
+    | GET (APP1)  | UPDATE (APP2)  | UPDATE (APP1)
+```
 
 
+以下フィールドを利用することで、上書きされないようにすることができる
 
+```
+{
+  "_primary_term": n1,
+  "_seq_no": n2
+}
+```
+
+リクエスト時、
+
+```
+POST /put_index_name_here/_update/put_document_id_here?if_primary_term=n1&if_seq_no=n2
+{
+  ...
+}
+```
+
+格納されているDocumentの`_primary_term`、`_seq_no`がURLパラメータに指定されている値と違うと、エラーが発生
+アプリ側でもう一度GETし、加工後UPDATEするなどの対応が可能
 
 
 
