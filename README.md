@@ -175,7 +175,8 @@ POST /put_index_name_here/_update/put_document_id_here?if_primary_term=n1&if_seq
 ```
 
 格納されているDocumentの`_primary_term`、`_seq_no`がURLパラメータに指定されている値と違うと、エラーが発生
-アプリ側でもう一度GETし、加工後UPDATEするなどの対応が可能
+
+アプリ側でもう一度GET、加工し、UPDATEするなどの処理が必要
 
 
 
